@@ -474,3 +474,174 @@ docker cp 容器id:容器内路径 目的主机路径
 # 拷贝是一个手动过程，未来我们使用 -v 卷的技术，可以实现自动同步
 ```
 
+## 小结
+
+![4.jpg](http://dockone.io/uploads/article/20190701/a76d5202964a2ba5cdd6466d6afcd1ef.jpg)
+
+## 作业练习
+
+> Docker 安装 Nginx
+
+```shell
+# 1.搜索镜像 search
+# 2.下载镜像 pull 
+# 3.运行测试 
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker images
+REPOSITORY   TAG       IMAGE ID       CREATED        SIZE
+nginx        latest    f6d0b4767a6c   2 months ago   133MB
+centos       latest    300e315adb2f   3 months ago   209MB
+
+# -d 后台运行
+# --name 给容器命名
+# -p 宿主机端口:容器内部端口
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker run -d --name nginx01 -p 3344:80 nginx
+3e2fdd3d1d91d50059ab0c5e29b8407385838801bf69493e94bd1db84c419404
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS                  NAMES
+3e2fdd3d1d91   nginx     "/docker-entrypoint.…"   8 seconds ago   Up 7 seconds   0.0.0.0:3344->80/tcp   nginx01
+[root@izbp11tm4pvghonrtfzq17z leehom]# curl localhost:3344
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+    body {
+        width: 35em;
+        margin: 0 auto;
+        font-family: Tahoma, Verdana, Arial, sans-serif;
+    }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+
+# 进入容器
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker exec -it nginx01 /bin/bash
+root@3e2fdd3d1d91:/# whereis nginx
+nginx: /usr/sbin/nginx /usr/lib/nginx /etc/nginx /usr/share/nginx
+root@3e2fdd3d1d91:/# cd /etc/nginx/
+root@3e2fdd3d1d91:/etc/nginx# ls
+conf.d	fastcgi_params	koi-utf  koi-win  mime.types  modules  nginx.conf  scgi_params	uwsgi_params  win-utf
+```
+
+> Docker 安装 Tomcat
+
+```shell
+# 官方的使用
+docker run -it --rm tomcat:9.0
+
+# 之前的启动均为后台，停止容器后，容器还可以查到 docker run -it --rm，一般用来测试，用完就删除
+
+# 下载再启动
+docker pull tomcat
+
+# 启动运行
+docker run -d -ip 3345:8080 --name tomcat01 tomcat
+
+# 测试访问没有问题
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker run -d -p 3345:8080 --name tomcat01 tomcat
+523834660d43deb93c0450ccf71eded487aa38a0cfba8b79c2c4057312f33265
+
+# 进入容器
+[root@izbp11tm4pvghonrtfzq17z leehom]# docker exec -it tomcat01 /bin/bash
+
+# 发现问题：1.linux命令减少 2.没有webapps 阿里云镜像的原因。默认是最小的镜像，所以不必要的都剔除
+# 保证最小可运行环境
+```
+
+> Docker 部署 es + kibana
+
+```shell
+# es 暴露的端口很多
+# es 十分耗内存
+# es 的数据一般需要放置到安全目录！挂载
+# --net somenetwork 网络配置
+
+# 启动
+docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" elasticsearch:tag
+
+# docker stats 查看cpu的状态 
+
+# es 耗内存
+# 增加内存限制，修改配置文件，-e 环境配置修改
+docker run -d --name elasticsearch -p 9200:9200 -p 9300:9300 -e "discovery.type=single-node" -e ES_JAVA_OPTS="-Xms64m -Xmx512m" elasticsearch:7.6.2
+
+# 查看 docker stats
+
+[root@izbp11tm4pvghonrtfzq17z leehom]# curl localhost:9200
+{
+  "name" : "efd0aed936ea",
+  "cluster_name" : "docker-cluster",
+  "cluster_uuid" : "MeGd_2w_TiqdUpNhosPRGQ",
+  "version" : {
+    "number" : "7.6.2",
+    "build_flavor" : "default",
+    "build_type" : "docker",
+    "build_hash" : "ef48eb35cf30adf4db14086e8aabd07ef6fb113f",
+    "build_date" : "2020-03-26T06:34:37.794943Z",
+    "build_snapshot" : false,
+    "lucene_version" : "8.4.0",
+    "minimum_wire_compatibility_version" : "6.8.0",
+    "minimum_index_compatibility_version" : "6.0.0-beta1"
+  },
+  "tagline" : "You Know, for Search"
+}
+
+```
+
+## 可视化
+
+- portainer
+
+  ```shell
+  docker run -d -p 8088:9000 --restart=always -v /var/run/docker.sock:/var/run/docker.sock --privileged=true portainer/portainer
+  ```
+
+- Rancher(CI/CD)
+
+  
+
+**什么是 portainer？**
+
+Docker图形化界面管理工具，提供一个后台面板供我们操作
+
+```shell
+docker run -d -p 8088:9000 --restart=always -v /var/run/docker.sock:/var/run/docker.sock --privileged=true portainer/portainer
+```
+
+访问测试：外网 http://47.111.117.142:8088/
+
+# Docker 镜像讲解
+
+## 镜像是什么
+
+镜像是一种轻量级、可执行的独立软件包，用来打包软件运行环境和基于运行环境开发的软件，它包含运行某个软件所需的所有内容，包括代码、运行时、库、环境变量和配置文件。
+
+所有的应用，直接打包docker镜像，就可以直接运行。
+
+如何得到镜像：
+
+- 远程仓库下载
+- 拷贝他人
+- 自己制作镜像 DockerFile
+
+## Docker 镜像加载原理
+
+> UnionFS（联合文件系统）
+
+UnionFS（联合文件系统）：Union文件系统（UnionFS）是一种分层、轻量级并且高性能的文件系统，它支持对文件系统的修改作为一次提交来一层层的叠加，同时可以将不同目录挂载到同一个虚拟文件系统下（unite several directions into a single virctual filesystem）。Union文件系统是Docker镜像的基础。镜像可以通过分层来进行继承，基于基础镜像（没有父镜像），可以制作各种具体的应用镜像。
+
+特性：一次同时加载多个文件系统，但从外面看起来，只能看到一个文件系统，联合加载会把各层文件系统叠加起来，这样最终的文件系统会包含所有底层的文件和目录
+
+ 
